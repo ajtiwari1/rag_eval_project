@@ -8,3 +8,14 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Environment variables
+.env
+
+# cache logs 
+.deepeval/
+.pytest_cache/
+
+# chroma store 
+chroma_store/
+

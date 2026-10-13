@@ -3,6 +3,11 @@
 import os
 from dotenv import load_dotenv
 
+load_dotenv()
+
+if os.getenv("LLM_PROVIDER", "openai").strip().lower() in {"ollama", "local"}:
+    os.environ.setdefault("DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE", "600")
+
 from deepeval import evaluate
 from deepeval.models import DeepEvalBaseLLM
 from deepeval.test_case import LLMTestCase
@@ -21,10 +26,8 @@ from evals.harness import (
 )
 from evals.saving_data import save_results
 
-load_dotenv()
-
 GOLDEN_PATH = "goldens/retriever_goldens.json"
-JUDGE_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
+JUDGE_PROVIDER = get_llm_config()["provider"]
 JUDGE_MODEL = (
     os.getenv("LLM_MODEL")
     or os.getenv("JUDGE_MODEL")
@@ -91,9 +94,6 @@ class LLMJudge(DeepEvalBaseLLM):
         return self._normalize_response_content(response.content)
 
 
-GroqJudge = LLMJudge
-
-
 # 2. Run evaluation
 def run(retriever):
     goldens = load_goldens(GOLDEN_PATH)
@@ -118,7 +118,7 @@ def run(retriever):
             )
         )
 
-    judge = GroqJudge()
+    judge = LLMJudge()
 
     metrics = [
         ContextualRecallMetric(

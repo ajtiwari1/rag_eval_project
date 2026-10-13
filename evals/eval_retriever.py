@@ -12,8 +12,7 @@ from deepeval.metrics import (
 )
 from deepeval.evaluate.configs import AsyncConfig
 
-from langchain_groq import ChatGroq
-
+from src.llm_factory import get_llm, get_llm_config
 from src.reranker import RerankingRetriever
 from evals.harness import (
     load_goldens,
@@ -25,20 +24,24 @@ from evals.saving_data import save_results
 load_dotenv()
 
 GOLDEN_PATH = "goldens/retriever_goldens.json"
-JUDGE_MODEL = os.getenv(
-    "GROQ_MODEL",
-    "openai/gpt-oss-120b",
+JUDGE_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
+JUDGE_MODEL = (
+    os.getenv("LLM_MODEL")
+    or os.getenv("JUDGE_MODEL")
+    or get_llm_config(provider=JUDGE_PROVIDER)["model"]
 )
 THRESHOLD = 0.7
 
 
-# 1. Custom DeepEval judge using Groq
-class GroqJudge(DeepEvalBaseLLM):
+# 1. Custom DeepEval judge using the configured provider
+class LLMJudge(DeepEvalBaseLLM):
 
-    def __init__(self, model_name=JUDGE_MODEL):
-        self.model_name = model_name
-        self.llm = ChatGroq(
-            model=model_name,
+    def __init__(self, provider=None, model_name=None):
+        self.provider = provider or JUDGE_PROVIDER
+        self.model_name = model_name or JUDGE_MODEL
+        self.llm = get_llm(
+            provider=self.provider,
+            model=self.model_name,
             temperature=0,
         )
 
@@ -55,6 +58,9 @@ class GroqJudge(DeepEvalBaseLLM):
     async def a_generate(self, prompt: str) -> str:
         response = await self.llm.ainvoke(prompt)
         return response.content
+
+
+GroqJudge = LLMJudge
 
 
 # 2. Run evaluation

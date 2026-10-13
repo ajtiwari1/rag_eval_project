@@ -38,6 +38,34 @@ def test_get_llm_config_uses_provider_specific_model_first(monkeypatch):
     assert cfg["model"] == "gemini-3.8-flash"
 
 
+def test_get_llm_config_supports_local_ollama(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "local")
+    monkeypatch.setenv("OLLAMA_MODEL", "qwen2.5:3b")
+
+    cfg = get_llm_config()
+
+    assert cfg["provider"] == "ollama"
+    assert cfg["model"] == "qwen2.5:3b"
+    assert cfg["api_key"] is None
+    assert cfg["api_key_env"] is None
+
+
+def test_get_llm_creates_ollama_without_api_key(monkeypatch):
+    from langchain_ollama import ChatOllama
+
+    from src.llm_factory import get_llm
+
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3.2")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+
+    llm = get_llm()
+
+    assert isinstance(llm, ChatOllama)
+    assert llm.model == "llama3.2"
+    assert llm.base_url == "http://127.0.0.1:11434"
+
+
 def test_get_llm_factory_uses_low_thinking_by_default(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "gemini")
     monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")

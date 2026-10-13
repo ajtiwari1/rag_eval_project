@@ -31,6 +31,11 @@ PROVIDER_DEFAULTS = {
         "api_key_env": "ANTHROPIC_API_KEY",
         "api_key_field": "anthropic_api_key",
     },
+    "ollama": {
+        "model": "llama3.2",
+        "api_key_env": None,
+        "api_key_field": None,
+    },
 }
 
 SUPPORTED_PROVIDERS = tuple(PROVIDER_DEFAULTS.keys())
@@ -51,6 +56,8 @@ def normalize_provider(provider: str | None) -> str:
         "xai": "grok",
         "claude": "claude",
         "anthropic": "claude",
+        "ollama": "ollama",
+        "local": "ollama",
     }
 
     resolved = aliases.get(normalized)
@@ -84,7 +91,7 @@ def get_llm_config(
     )
 
     api_key_env = defaults["api_key_env"]
-    api_key = os.getenv(api_key_env)
+    api_key = os.getenv(api_key_env) if api_key_env else None
 
     return {
         "provider": resolved_provider,
@@ -110,14 +117,32 @@ def get_llm(
         **kwargs,
     )
 
-    if not config["api_key"]:
-        raise ValueError(
-            f"Missing API key for provider '{config['provider']}'. "
-            f"Set {config['api_key_env']} in your environment or .env file."
-        )
-
     provider = config["provider"]
     extra_kwargs = dict(config["extra_kwargs"])
+
+    if provider == "ollama":
+        try:
+            from langchain_ollama import ChatOllama
+        except ImportError as exc:
+            raise ImportError(
+                "Install langchain-ollama to use the Ollama provider."
+            ) from exc
+
+        base_url = os.getenv("OLLAMA_BASE_URL")
+        if base_url:
+            extra_kwargs.setdefault("base_url", base_url)
+
+        return ChatOllama(
+            model=config["model"],
+            temperature=config["temperature"],
+            **extra_kwargs,
+        )
+
+    if not config["api_key"]:
+        raise ValueError(
+            f"Missing API key for provider '{provider}'. "
+            f"Set {config['api_key_env']} in your environment or .env file."
+        )
 
     if provider == "openai":
         from langchain_openai import ChatOpenAI

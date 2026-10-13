@@ -2,12 +2,12 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-def save_results(result, output_dir="evaluation_results"):
+def save_results(result, output_dir="evaluation_results", filename_prefix="retriever"):
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_path = output_path / f"retriever_eval_{timestamp}.json"
+    file_path = output_path / f"{filename_prefix}_eval_{timestamp}.json"
 
     test_results = []
 

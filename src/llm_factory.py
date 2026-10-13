@@ -12,7 +12,7 @@ PROVIDER_DEFAULTS = {
         "api_key_field": "api_key",
     },
     "gemini": {
-        "model": "gemini-2.0-flash",
+        "model": "gemini-3.8-flash",
         "api_key_env": "GEMINI_API_KEY",
         "api_key_field": "google_api_key",
     },
@@ -137,12 +137,17 @@ def get_llm(
                 "Install langchain-google-genai to use the Gemini provider."
             ) from exc
 
-        return ChatGoogleGenerativeAI(
-            model=config["model"],
-            google_api_key=config["api_key"],
-            temperature=config["temperature"],
-            **extra_kwargs,
-        )
+        thinking_level = os.getenv("GEMINI_THINKING_LEVEL", "low")
+        extra_kwargs.setdefault("thinking_level", thinking_level)
+
+        gemini_kwargs = {
+            "model": config["model"],
+            "google_api_key": config["api_key"],
+            "temperature": config["temperature"],
+        }
+        gemini_kwargs.update(extra_kwargs)
+
+        return ChatGoogleGenerativeAI(**gemini_kwargs)
 
     if provider == "groq":
         from langchain_groq import ChatGroq

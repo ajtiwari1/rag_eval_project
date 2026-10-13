@@ -51,13 +51,44 @@ class LLMJudge(DeepEvalBaseLLM):
     def get_model_name(self):
         return self.model_name
 
+    @staticmethod
+    def _normalize_response_content(content):
+        if content is None:
+            return ""
+
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            parts = []
+            for item in content:
+                if isinstance(item, str):
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    for key in ("text", "content", "output_text"):
+                        if key in item:
+                            parts.append(str(item[key]))
+                            break
+                    else:
+                        parts.append(str(item))
+                else:
+                    parts.append(str(item))
+            return "".join(parts).strip()
+
+        if isinstance(content, dict):
+            for key in ("text", "content", "output_text"):
+                if key in content:
+                    return str(content[key])
+
+        return str(content)
+
     def generate(self, prompt: str) -> str:
         response = self.llm.invoke(prompt)
-        return response.content
+        return self._normalize_response_content(response.content)
 
     async def a_generate(self, prompt: str) -> str:
         response = await self.llm.ainvoke(prompt)
-        return response.content
+        return self._normalize_response_content(response.content)
 
 
 GroqJudge = LLMJudge

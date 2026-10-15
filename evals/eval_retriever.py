@@ -9,7 +9,6 @@ if os.getenv("LLM_PROVIDER", "openai").strip().lower() in {"ollama", "local"}:
     os.environ.setdefault("DEEPEVAL_PER_ATTEMPT_TIMEOUT_SECONDS_OVERRIDE", "600")
 
 from deepeval import evaluate
-from deepeval.models import DeepEvalBaseLLM
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import (
     ContextualRecallMetric,
@@ -17,7 +16,7 @@ from deepeval.metrics import (
 )
 from deepeval.evaluate.configs import AsyncConfig
 
-from src.llm_factory import get_llm, get_llm_config
+from evals.llm_judge import JUDGE_MODEL, LLMJudge
 from src.reranker import RerankingRetriever
 from evals.harness import (
     load_goldens,
@@ -27,71 +26,7 @@ from evals.harness import (
 from evals.saving_data import save_results
 
 GOLDEN_PATH = "goldens/retriever_goldens.json"
-JUDGE_PROVIDER = get_llm_config()["provider"]
-JUDGE_MODEL = (
-    os.getenv("LLM_MODEL")
-    or os.getenv("JUDGE_MODEL")
-    or get_llm_config(provider=JUDGE_PROVIDER)["model"]
-)
 THRESHOLD = 0.7
-
-
-# 1. Custom DeepEval judge using the configured provider
-class LLMJudge(DeepEvalBaseLLM):
-
-    def __init__(self, provider=None, model_name=None):
-        self.provider = provider or JUDGE_PROVIDER
-        self.model_name = model_name or JUDGE_MODEL
-        self.llm = get_llm(
-            provider=self.provider,
-            model=self.model_name,
-            temperature=0,
-        )
-
-    def load_model(self):
-        return self.llm
-
-    def get_model_name(self):
-        return self.model_name
-
-    @staticmethod
-    def _normalize_response_content(content):
-        if content is None:
-            return ""
-
-        if isinstance(content, str):
-            return content
-
-        if isinstance(content, list):
-            parts = []
-            for item in content:
-                if isinstance(item, str):
-                    parts.append(item)
-                elif isinstance(item, dict):
-                    for key in ("text", "content", "output_text"):
-                        if key in item:
-                            parts.append(str(item[key]))
-                            break
-                    else:
-                        parts.append(str(item))
-                else:
-                    parts.append(str(item))
-            return "".join(parts).strip()
-
-        if isinstance(content, dict):
-            for key in ("text", "content", "output_text"):
-                if key in content:
-                    return str(content[key])
-
-        return str(content)
-
-    def generate(self, prompt: str) -> str:
-        response = self.llm.invoke(prompt)
-        return self._normalize_response_content(response.content)
-
-    async def a_generate(self, prompt: str) -> str:
-        response = await self.llm.ainvoke(prompt)
-        return self._normalize_response_content(response.content)
 
 
 # 2. Run evaluation
@@ -119,7 +54,6 @@ def run(retriever):
         )
 
     judge = LLMJudge()
-
     metrics = [
         ContextualRecallMetric(
             threshold=THRESHOLD,

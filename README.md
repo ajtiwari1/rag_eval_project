@@ -196,7 +196,3 @@ Some standalone files execute their evaluation at import time rather than
 exposing a `run()` function; use the intended module/entry point and avoid
 importing those files merely to inspect them.
 
-> **Golden filename caveat:** `evals/eval_generator.py` currently expects
-> `goldens/faithfulness_dataset.json`, while the dataset present in this
-> workspace is named `goldens/faithfullness_dataset.json`. Align the filename or
-> evaluator path before running the isolated generator evaluation.
